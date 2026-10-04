@@ -234,6 +234,7 @@ class VC:
         resample_sr,
         rms_mix_rate,
         protect,
+        formant=0.0,
     ):
         if input_audio_path is None:
             return inference_status("单次推理", "等待输入", i18n("请上传音频文件")), None
@@ -276,6 +277,7 @@ class VC:
                 rms_mix_rate,
                 self.version,
                 protect,
+                formant,
             )
             if self.tgt_sr != resample_sr >= 16000:
                 tgt_sr = resample_sr
@@ -322,6 +324,7 @@ class VC:
         rms_mix_rate,
         protect,
         format1,
+        formant=0.0,
     ):
         try:
             dir_path = (
@@ -377,6 +380,7 @@ class VC:
                     resample_sr,
                     rms_mix_rate,
                     protect,
+                    formant,
                 )
                 if opt and opt[0] is not None and opt[1] is not None:
                     try:

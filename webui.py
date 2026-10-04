@@ -1871,6 +1871,14 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                                         label=i18n("变调(整数, 半音数量, 升八度12降八度-12)"),
                                         value=0,
                                     )
+                                    formant0 = gr.Slider(
+                                        minimum=-2,
+                                        maximum=2,
+                                        step=0.05,
+                                        label=i18n("性别因子/声线粗细"),
+                                        value=0,
+                                        interactive=True,
+                                    )
                                 with gr.Column(scale=2, min_width=200):
                                     f0method0 = gr.Radio(
                                         label=i18n("选择音高提取算法"),
@@ -1960,6 +1968,7 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                                 resample_sr0,
                                 rms_mix_rate0,
                                 protect0,
+                                formant0,
                             ],
                             [vc_output1, vc_output2],
                             api_name="infer_convert",
@@ -1975,6 +1984,14 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                         vc_transform1 = gr.Number(
                             label=i18n("变调(整数, 半音数量, 升八度12降八度-12)"),
                             value=0,
+                        )
+                        formant1 = gr.Slider(
+                            minimum=-2,
+                            maximum=2,
+                            step=0.05,
+                            label=i18n("性别因子/声线粗细"),
+                            value=0,
+                            interactive=True,
                         )
                         opt_input = gr.Textbox(
                             label=i18n("指定输出文件夹"), value="opt"
@@ -2071,6 +2088,7 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                             rms_mix_rate1,
                             protect1,
                             format1,
+                            formant1,
                         ],
                         [vc_output3],
                         api_name="infer_convert_batch",

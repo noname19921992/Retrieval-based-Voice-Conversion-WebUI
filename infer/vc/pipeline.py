@@ -152,6 +152,7 @@ class Pipeline(object):
         index_rate,
         version,
         protect,
+        formant=0.0,
     ):
         feats = torch.from_numpy(audio0)
         if self.is_half:
@@ -215,34 +216,51 @@ class Pipeline(object):
             pitchff = pitchff.unsqueeze(-1)
             feats = feats * pitchff + feats0 * (1 - pitchff)
             feats = feats.to(feats0.dtype)
+        return_length = p_len
+        return_length2 = (
+            max(1, int(np.ceil(return_length * pow(2, formant / 12))))
+            if formant
+            else None
+        )
+        # Match the realtime path: keep pitch steady while stretching the decoder.
+        synth_pitchf = (
+            pitchf * (return_length2 / return_length)
+            if return_length2 is not None and pitchf is not None
+            else pitchf
+        )
         p_len = torch.tensor([p_len], device=self.device).long()
         with torch.no_grad():
             hasp = pitch is not None and pitchf is not None
             if hasp:
                 synthesized = run_cuda_graph(
                     net_g,
-                    "rvc-synth-f0",
+                    f"rvc-synth-f0-{return_length2}",
                     lambda phone, lengths, coarse, continuous, speaker: net_g.infer(
-                        phone, lengths, coarse, continuous, speaker
+                        phone, lengths, coarse, continuous, speaker,
+                        return_length2=return_length2,
                     )[0],
                     feats,
                     p_len,
                     pitch,
-                    pitchf,
+                    synth_pitchf,
                     sid,
                 )
             else:
                 synthesized = run_cuda_graph(
                     net_g,
-                    "rvc-synth-no-f0",
+                    f"rvc-synth-no-f0-{return_length2}",
                     lambda phone, lengths, speaker: net_g.infer(
-                        phone, lengths, speaker
+                        phone, lengths, speaker, return_length2=return_length2
                     )[0],
                     feats,
                     p_len,
                     sid,
                 )
             audio1 = synthesized[0, 0].data.cpu().float().numpy()
+            if return_length2 is not None:
+                audio1 = librosa.resample(
+                    audio1, orig_sr=return_length2, target_sr=return_length
+                )
             del hasp, synthesized
         del feats, p_len, padding_mask
         if torch.cuda.is_available() and not cuda_graph_enabled(self.device):
@@ -269,7 +287,11 @@ class Pipeline(object):
         rms_mix_rate,
         version,
         protect,
+        formant=0.0,
     ):
+        formant = float(formant)
+        if not -2 <= formant <= 2:
+            raise ValueError("formant must be between -2 and 2")
         if (
             file_index != ""
             and os.path.exists(file_index)
@@ -311,7 +333,7 @@ class Pipeline(object):
             pitch, pitchf = self.get_f0(
                 audio_pad,
                 p_len,
-                f0_up_key,
+                f0_up_key - formant,
                 f0_method,
             )
             pitch = pitch[:p_len]
@@ -338,6 +360,7 @@ class Pipeline(object):
                         index_rate,
                         version,
                         protect,
+                        formant,
                     )[self.t_pad_tgt : -self.t_pad_tgt]
                 )
             else:
@@ -355,6 +378,7 @@ class Pipeline(object):
                         index_rate,
                         version,
                         protect,
+                        formant,
                     )[self.t_pad_tgt : -self.t_pad_tgt]
                 )
             s = t
@@ -373,6 +397,7 @@ class Pipeline(object):
                     index_rate,
                     version,
                     protect,
+                    formant,
                 )[self.t_pad_tgt : -self.t_pad_tgt]
             )
         else:
@@ -390,6 +415,7 @@ class Pipeline(object):
                     index_rate,
                     version,
                     protect,
+                    formant,
                 )[self.t_pad_tgt : -self.t_pad_tgt]
             )
         audio_opt = np.concatenate(audio_opt)
